@@ -1,0 +1,22 @@
+# --- Nunca subas tus claves a GitHub ---
+google_indexing/oauth_client.json
+google_indexing/oauth_token.json
+google_indexing/oauth_token_search_console.json
+google_indexing/service_account.json
+google_indexing/google_auth_mode.txt
+
+bing_indexing/config.json
+bing_indexing/*.txt
+!bing_indexing/config.example.json
+
+indexing_web/prefs.json
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# Sistema
+.DS_Store
+Thumbs.db

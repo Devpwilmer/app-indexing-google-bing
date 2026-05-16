@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Indexación masiva · Google y Bing</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"DM Sans"', 'system-ui', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
+          },
+        },
+      },
+    };
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+</head>
+<body class="min-h-screen bg-stone-50 text-stone-800 antialiased" data-initial-tab="{{ initial_tab|default('send') }}">
+  <div class="pointer-events-none fixed inset-0 -z-10 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-50/80 via-stone-50 to-stone-50"></div>
+
+  <div class="mx-auto max-w-3xl px-4 py-8 pb-16 sm:px-6">
+    <header class="mb-8">
+      <p class="text-xs font-medium uppercase tracking-widest text-stone-400">Automatización</p>
+      <h1 class="mt-1 text-2xl font-semibold tracking-tight text-stone-900">Indexación masiva</h1>
+      <p class="mt-2 text-sm text-stone-500">Envía URLs a Google y Bing desde un solo lugar. Ideal para <strong class="font-medium text-stone-600">Shopify</strong>; válido para cualquier web.</p>
+    </header>
+
+    <!-- Estado APIs -->
+    <div class="mb-6 flex flex-wrap gap-2" id="status-badges">
+      <span class="inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-white px-3 py-1 text-xs text-stone-500">
+        <span class="h-1.5 w-1.5 rounded-full bg-stone-300" id="dot-google"></span>
+        Google
+      </span>
+      <span class="inline-flex items-center gap-1.5 rounded-full border border-stone-200 bg-white px-3 py-1 text-xs text-stone-500">
+        <span class="h-1.5 w-1.5 rounded-full bg-stone-300" id="dot-bing"></span>
+        Bing
+      </span>
+    </div>
+
+    <nav class="mb-4 flex gap-1 rounded-xl border border-stone-200 bg-white p-1 shadow-sm">
+      <button type="button" id="tab-btn-send" data-tab="send" class="tab-btn flex-1 rounded-lg px-4 py-2 text-sm font-medium text-stone-600 transition">Enviar URLs</button>
+      <button type="button" id="tab-btn-config" data-tab="config" class="tab-btn flex-1 rounded-lg px-4 py-2 text-sm font-medium text-stone-600 transition">Configurar APIs</button>
+    </nav>
+
+    <div id="config-toast" class="mb-4 hidden rounded-xl px-4 py-3 text-sm"></div>
+
+    <div id="panel-send">
+
+    <!-- URLs -->
+    <section class="rounded-2xl border border-stone-200/80 bg-white p-5 shadow-sm shadow-stone-200/40">
+      <div class="flex items-center justify-between gap-4">
+        <label for="urls" class="text-sm font-medium text-stone-700">URLs</label>
+        <span id="url-count" class="font-mono text-xs text-stone-400">0 URLs</span>
+      </div>
+
+      <textarea
+        id="urls"
+        rows="10"
+        placeholder="Pega una URL por línea o desde CSV&#10;https://tudominio.com/&#10;https://tudominio.com/blogs/articulo..."
+        class="mt-3 w-full resize-y rounded-xl border border-stone-200 bg-stone-50/50 px-4 py-3 font-mono text-sm leading-relaxed text-stone-800 placeholder:text-stone-400 focus:border-emerald-500 focus:bg-white focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+      ></textarea>
+
+      <div class="mt-4 flex flex-wrap gap-2">
+        <label class="cursor-pointer rounded-lg border border-stone-200 bg-white px-3 py-2 text-xs font-medium text-stone-600 transition hover:bg-stone-50">
+          Subir .txt / .csv
+          <input type="file" id="file-input" accept=".txt,.csv" class="hidden" />
+        </label>
+        <button type="button" id="btn-sitemap" class="rounded-lg border border-stone-200 bg-white px-3 py-2 text-xs font-medium text-stone-600 transition hover:bg-stone-50">
+          Cargar sitemap
+        </button>
+        <input
+          type="url"
+          id="sitemap-url"
+          name="sitemap_url_generic"
+          value="https://tudominio.com/sitemap.xml"
+          placeholder="https://tudominio.com/sitemap.xml"
+          autocomplete="off"
+          autocorrect="off"
+          spellcheck="false"
+          data-lpignore="true"
+          data-form-type="other"
+          class="min-w-0 flex-1 rounded-lg border border-stone-200 px-3 py-2 font-mono text-xs text-stone-600 focus:border-emerald-500 focus:outline-none focus:ring-2 focus:ring-emerald-500/20"
+        />
+      </div>
+    </section>
+
+    <!-- Acciones -->
+    <section class="mt-5 grid gap-3 sm:grid-cols-3">
+      <button type="button" id="btn-google" class="group flex flex-col items-center rounded-2xl border border-emerald-200/80 bg-white px-4 py-4 shadow-sm transition hover:border-emerald-300 hover:shadow-md disabled:opacity-50">
+        <span class="text-sm font-semibold text-emerald-800">Google</span>
+        <span class="mt-1 text-xs text-stone-400">Indexing API</span>
+      </button>
+      <button type="button" id="btn-bing" class="group flex flex-col items-center rounded-2xl border border-sky-200/80 bg-white px-4 py-4 shadow-sm transition hover:border-sky-300 hover:shadow-md disabled:opacity-50">
+        <span class="text-sm font-semibold text-sky-800">Bing</span>
+        <span class="mt-1 text-xs text-stone-400">IndexNow</span>
+      </button>
+      <button type="button" id="btn-both" class="flex flex-col items-center rounded-2xl bg-stone-900 px-4 py-4 text-white shadow-sm transition hover:bg-stone-800 disabled:opacity-50">
+        <span class="text-sm font-semibold">Ambos</span>
+        <span class="mt-1 text-xs text-stone-400">Google + Bing</span>
+      </button>
+    </section>
+
+    <!-- Resultados -->
+    <section class="mt-6 hidden rounded-2xl border border-stone-200 bg-white p-5 shadow-sm" id="results-panel">
+      <div class="flex items-center justify-between">
+        <h2 class="text-sm font-medium text-stone-700">Resultado</h2>
+        <button type="button" id="btn-clear-results" class="text-xs text-stone-400 hover:text-stone-600">Cerrar</button>
+      </div>
+      <pre id="results" class="mt-3 max-h-80 overflow-auto rounded-xl bg-stone-900 p-4 font-mono text-xs leading-relaxed text-emerald-100/90"></pre>
+    </section>
+
+    <!-- Instrucciones -->
+    <section class="mt-10 rounded-2xl border border-stone-200/80 bg-white p-6 shadow-sm shadow-stone-200/40">
+      <h2 class="text-sm font-semibold text-stone-800">Cómo usar esta herramienta</h2>
+      <p class="mt-2 text-sm leading-relaxed text-stone-500">
+        Pensada para tiendas <strong class="font-medium text-stone-700">Shopify</strong> (sitemap automático, blogs, productos y páginas),
+        pero sirve para <strong class="font-medium text-stone-700">cualquier sitio web</strong> siempre que las URLs sean públicas
+        (<code class="rounded bg-stone-100 px-1 py-0.5 font-mono text-xs">https://tudominio.com/...</code>)
+        y tengas configurado Google Search Console y Bing Webmaster Tools para ese dominio.
+      </p>
+
+      <ol class="mt-5 space-y-4 text-sm text-stone-600">
+        <li class="flex gap-3">
+          <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-stone-100 font-mono text-xs font-medium text-stone-600">1</span>
+          <span>
+            <strong class="text-stone-800">Configura una sola vez</strong> en la pestaña
+            <em>Configurar APIs</em> (o en las carpetas <code class="font-mono text-xs">google_indexing/</code> y
+            <code class="font-mono text-xs">bing_indexing/</code>): OAuth o cuenta de servicio de Google, clave IndexNow de Bing y el archivo
+            <code class="font-mono text-xs">TU_CLAVE.txt</code> en la raíz de tu dominio (Shopify: Archivos + redirección URL).
+          </span>
+        </li>
+        <li class="flex gap-3">
+          <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-stone-100 font-mono text-xs font-medium text-stone-600">2</span>
+          <span>
+            <strong class="text-stone-800">Añade URLs</strong>: pégalas, sube un .txt/.csv de Search Console o pulsa
+            <em>Cargar sitemap</em> (en Shopify suele ser <code class="font-mono text-xs">/sitemap.xml</code>).
+          </span>
+        </li>
+        <li class="flex gap-3">
+          <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-stone-100 font-mono text-xs font-medium text-stone-600">3</span>
+          <span>
+            <strong class="text-stone-800">Envía</strong>:
+            <span class="text-emerald-700">Google</span> (Indexing API),
+            <span class="text-sky-700">Bing</span> (IndexNow) o
+            <span class="text-stone-800">Ambos</span>. Revisa el panel de resultado (códigos 200/202 = recibido).
+          </span>
+        </li>
+        <li class="flex gap-3">
+          <span class="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-stone-100 font-mono text-xs font-medium text-stone-600">4</span>
+          <span>
+            <strong class="text-stone-800">Comprueba en los paneles</strong>: Google Search Console y Bing Webmaster Tools.
+            Esta app <em>notifica</em> cambios; no garantiza indexación inmediata.
+          </span>
+        </li>
+      </ol>
+
+      <div class="mt-5 rounded-xl border border-amber-200/80 bg-amber-50/60 px-4 py-3 text-xs leading-relaxed text-amber-900/90">
+        <strong>Shopify:</strong> el sitemap se actualiza solo al publicar productos, colecciones o entradas de blog.
+        Para páginas nuevas “descubiertas pero no indexadas”, conviene enviarlas aquí y enlazarlas desde el blog o la home.
+        <strong class="mt-2 block font-medium">Cuotas:</strong> Google ~200 avisos/día; Bing por lotes (IndexNow). Uso masivo: reparte en varios días.
+      </div>
+
+      <div class="mt-4 rounded-xl border border-stone-200 bg-stone-50 px-4 py-3 text-xs leading-relaxed text-stone-600">
+        <strong class="text-stone-700">Arrancar la app en tu PC:</strong>
+        <code class="mt-1 block font-mono text-[11px]">cd indexing_web → pip install -r requirements.txt → python app.py</code>
+        Luego abre <code class="font-mono text-[11px]">http://127.0.0.1:5055</code>. Solo funciona en tu equipo (no es pública en internet).
+      </div>
+    </section>
+
+    </div><!-- /panel-send -->
+
+    <div id="panel-config" class="hidden space-y-6">
+      <p class="text-sm text-stone-500">
+        Pega aquí las credenciales. Se guardan en tu PC en <code class="font-mono text-xs">google_indexing/</code> y
+        <code class="font-mono text-xs">bing_indexing/config.json</code> (solo uso local, no se suben a internet).
+      </p>
+
+      <section class="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">
+        <h2 class="text-sm font-semibold text-stone-800">Sitemap por defecto</h2>
+        <p class="mt-1 text-xs text-stone-500">Opcional. Si lo guardas, se usará en <em>Cargar sitemap</em>. Si no, queda la plantilla genérica.</p>
+        <input
+          id="cfg-sitemap-url"
+          type="url"
+          placeholder="https://tudominio.com/sitemap.xml"
+          autocomplete="off"
+          class="mt-3 w-full rounded-lg border border-stone-200 px-3 py-2 font-mono text-sm"
+        />
+        <button type="button" id="btn-save-sitemap" class="mt-3 rounded-xl bg-stone-800 px-5 py-2.5 text-sm font-semibold text-white hover:bg-stone-700">Guardar sitemap</button>
+      </section>
+
+      <!-- Bing -->
+      <section class="rounded-2xl border border-sky-200/80 bg-white p-5 shadow-sm">
+        <h2 class="text-sm font-semibold text-sky-900">Bing · IndexNow</h2>
+        <p class="mt-1 text-xs text-stone-500">Clave desde Bing Webmaster Tools. El archivo <code class="font-mono">TU_CLAVE.txt</code> debe estar en la raíz del sitio.</p>
+        <div class="mt-4 grid gap-3 sm:grid-cols-2">
+          <label class="block text-xs font-medium text-stone-600 sm:col-span-2">
+            Host (dominio sin https)
+            <input id="cfg-bing-host" type="text" placeholder="tudominio.com" class="mt-1 w-full rounded-lg border border-stone-200 px-3 py-2 font-mono text-sm" />
+          </label>
+          <label class="block text-xs font-medium text-stone-600">
+            Clave IndexNow
+            <input id="cfg-bing-key" type="text" placeholder="clave-generada-en-bing" class="mt-1 w-full rounded-lg border border-stone-200 px-3 py-2 font-mono text-sm" />
+          </label>
+          <label class="block text-xs font-medium text-stone-600">
+            URL del archivo de verificación
+            <input id="cfg-bing-key-location" type="url" placeholder="https://tudominio.com/clave.txt" class="mt-1 w-full rounded-lg border border-stone-200 px-3 py-2 font-mono text-sm" />
+          </label>
+        </div>
+        <label class="mt-4 block text-xs font-medium text-stone-600">
+          O pega el <code class="font-mono">config.json</code> completo
+          <textarea id="cfg-bing-json" rows="4" placeholder='{"host":"tudominio.com","key":"...","key_location":"https://..."}' class="mt-1 w-full rounded-lg border border-stone-200 px-3 py-2 font-mono text-xs"></textarea>
+        </label>
+        <button type="button" id="btn-save-bing" class="mt-4 rounded-xl bg-sky-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-sky-700">Guardar Bing</button>
+      </section>
+
+      <!-- Google -->
+      <section class="rounded-2xl border border-emerald-200/80 bg-white p-5 shadow-sm">
+        <h2 class="text-sm font-semibold text-emerald-900">Google · Indexing API</h2>
+        <p class="mt-1 text-xs text-stone-500">Proyecto en Google Cloud con Indexing API + propiedad en Search Console.</p>
+
+        <div class="mt-4 flex flex-wrap gap-2">
+          <label class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-stone-200 px-3 py-2 text-xs">
+            <input type="radio" name="google-mode" value="oauth" class="text-emerald-600" checked />
+            OAuth (Gmail / Search Console)
+          </label>
+          <label class="inline-flex cursor-pointer items-center gap-2 rounded-lg border border-stone-200 px-3 py-2 text-xs">
+            <input type="radio" name="google-mode" value="service_account" class="text-emerald-600" />
+            Cuenta de servicio (JSON)
+          </label>
+        </div>
+
+        <div id="cfg-google-oauth" class="mt-4 space-y-3">
+          <label class="block text-xs font-medium text-stone-600">
+            Cliente OAuth (<code class="font-mono">oauth_client.json</code> de Google Cloud)
+            <textarea id="cfg-google-client" rows="5" class="mt-1 w-full rounded-lg border border-stone-200 px-3 py-2 font-mono text-[11px]" placeholder='{"installed":{"client_id":"..."}}'></textarea>
+          </label>
+          <label class="block text-xs font-medium text-stone-600">
+            Token OAuth (<code class="font-mono">oauth_token.json</code>, opcional si autorizas abajo)
+            <textarea id="cfg-google-token" rows="4" class="mt-1 w-full rounded-lg border border-stone-200 px-3 py-2 font-mono text-[11px]" placeholder='{"token":"...","refresh_token":"..."}'></textarea>
+          </label>
+          <div class="flex flex-wrap gap-2">
+            <button type="button" id="btn-save-google" class="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700">Guardar Google</button>
+            <a href="/api/config/google/authorize" id="btn-google-auth" class="rounded-xl border border-emerald-300 bg-emerald-50 px-5 py-2.5 text-sm font-semibold text-emerald-800 hover:bg-emerald-100">Autorizar con Google</a>
+          </div>
+          <p class="text-[11px] text-stone-400">En Google Cloud, añade URI de redirección: <code class="font-mono">http://127.0.0.1:5055/oauth2callback</code></p>
+        </div>
+
+        <div id="cfg-google-sa" class="mt-4 hidden space-y-3">
+          <label class="block text-xs font-medium text-stone-600">
+            JSON cuenta de servicio
+            <textarea id="cfg-google-sa" rows="6" class="mt-1 w-full rounded-lg border border-stone-200 px-3 py-2 font-mono text-[11px]" placeholder='{"type":"service_account",...}'></textarea>
+          </label>
+          <button type="button" id="btn-save-google-sa" class="rounded-xl bg-emerald-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-emerald-700">Guardar cuenta de servicio</button>
+        </div>
+      </section>
+
+      <pre id="config-save-result" class="hidden max-h-40 overflow-auto rounded-xl bg-stone-900 p-4 font-mono text-xs text-emerald-100/90"></pre>
+    </div>
+
+    <footer class="mt-10 rounded-2xl border border-[#0A66C2]/20 bg-[#0A66C2]/5 px-5 py-5 text-center">
+      <p class="text-sm font-medium text-stone-800">¿Te sirvió esta herramienta?</p>
+      <p class="mt-1 text-xs text-stone-500">Conéctate conmigo en LinkedIn</p>
+      <a
+        href="https://pe.linkedin.com/in/wilmermendez"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="mt-4 inline-flex items-center gap-2 rounded-xl bg-[#0A66C2] px-6 py-3 text-sm font-semibold text-white shadow-md transition hover:bg-[#004182]"
+      >
+        <svg class="h-5 w-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path d="M20.447 20.452h-3.554v-5.569c0-1.328-.027-3.037-1.852-3.037-1.853 0-2.136 1.445-2.136 2.939v5.667H9.351V9h3.414v1.561h.046c.477-.9 1.637-1.85 3.37-1.85 3.601 0 4.267 2.37 4.267 5.455v6.286zM5.337 7.433c-1.144 0-2.063-.926-2.063-2.065 0-1.138.92-2.063 2.063-2.063 1.14 0 2.064.925 2.064 2.063 0 1.139-.925 2.065-2.064 2.065zm1.782 13.019H3.555V9h3.564v11.452zM22.225 0H1.771C.792 0 0 .774 0 1.729v20.542C0 23.227.792 24 1.771 24h20.451C23.2 24 24 23.227 24 22.271V1.729C24 .774 23.2 0 22.222 0h.003z"/></svg>
+        Wilmer Méndez · LinkedIn
+      </a>
+      <p class="mt-4 text-[11px] text-stone-400">
+        App local · tu dominio ·
+        <a href="https://tailwindcss.com/" class="underline hover:text-stone-600" target="_blank" rel="noopener">Tailwind CSS</a>
+      </p>
+    </footer>
+  </div>
+
+  <!-- Loading overlay -->
+  <div id="loading" class="fixed inset-0 z-50 hidden items-center justify-center bg-stone-900/20 backdrop-blur-sm">
+    <div class="rounded-2xl bg-white px-8 py-6 shadow-xl">
+      <div class="h-8 w-8 animate-spin rounded-full border-2 border-stone-200 border-t-emerald-600 mx-auto"></div>
+      <p class="mt-4 text-sm text-stone-600" id="loading-msg">Enviando...</p>
+    </div>
+  </div>
+
+  <script>
+    const $ = (s) => document.querySelector(s);
+    const urlsEl = $('#urls');
+    const urlCountEl = $('#url-count');
+    const resultsPanel = $('#results-panel');
+    const resultsEl = $('#results');
+    const loading = $('#loading');
+    const loadingMsg = $('#loading-msg');
+
+    function updateCount() {
+      const lines = urlsEl.value.trim();
+      const n = (lines.match(/https?:\/\//gi) || []).length;
+      urlCountEl.textContent = n + (n === 1 ? ' URL' : ' URLs');
+    }
+
+    urlsEl.addEventListener('input', updateCount);
+
+    async function loadStatus() {
+      const r = await fetch('/api/status');
+      const d = await r.json();
+      $('#dot-google').className = 'h-1.5 w-1.5 rounded-full ' + (d.google.ready ? 'bg-emerald-500' : 'bg-amber-400');
+      $('#dot-bing').className = 'h-1.5 w-1.5 rounded-full ' + (d.bing.ready ? 'bg-sky-500' : 'bg-amber-400');
+    }
+
+    const GENERIC_SITEMAP = 'https://tudominio.com/sitemap.xml';
+
+    /** Campo junto a "Cargar sitemap": siempre plantilla genérica (para compartir la app). */
+    function resetSendSitemapField() {
+      $('#sitemap-url').value = GENERIC_SITEMAP;
+    }
+
+    async function loadConfigSitemapField() {
+      try {
+        const d = await fetch('/api/config').then((r) => r.json());
+        if ($('#cfg-sitemap-url')) {
+          $('#cfg-sitemap-url').value = d.sitemap_url || '';
+        }
+      } catch (_) {
+        if ($('#cfg-sitemap-url')) $('#cfg-sitemap-url').value = '';
+      }
+    }
+
+    function showLoading(msg) {
+      loadingMsg.textContent = msg;
+      loading.classList.remove('hidden');
+      loading.classList.add('flex');
+    }
+    function hideLoading() {
+      loading.classList.add('hidden');
+      loading.classList.remove('flex');
+    }
+
+    function showResults(data) {
+      resultsEl.textContent = JSON.stringify(data, null, 2);
+      resultsPanel.classList.remove('hidden');
+    }
+
+    async function getUrlsFromTextarea() {
+      const r = await fetch('/api/parse', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: urlsEl.value }),
+      });
+      const d = await r.json();
+      return d.urls || [];
+    }
+
+    async function submit(engine) {
+      const urls = await getUrlsFromTextarea();
+      if (!urls.length) {
+        alert('Añade al menos una URL válida (https://...)');
+        return;
+      }
+      const labels = { google: 'Google', bing: 'Bing', both: 'Google y Bing' };
+      showLoading('Enviando a ' + labels[engine] + ' (' + urls.length + ' URLs)...');
+      document.querySelectorAll('#btn-google, #btn-bing, #btn-both, #btn-sitemap').forEach((b) => (b.disabled = true));
+      try {
+        const r = await fetch('/api/submit', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ engine, urls }),
+        });
+        const d = await r.json();
+        showResults(d);
+      } catch (e) {
+        showResults({ error: String(e) });
+      } finally {
+        hideLoading();
+        document.querySelectorAll('#btn-google, #btn-bing, #btn-both, #btn-sitemap').forEach((b) => (b.disabled = false));
+      }
+    }
+
+    $('#btn-google').onclick = () => submit('google');
+    $('#btn-bing').onclick = () => submit('bing');
+    $('#btn-both').onclick = () => submit('both');
+
+    $('#btn-sitemap').onclick = async () => {
+      showLoading('Leyendo sitemap...');
+      try {
+        const r = await fetch('/api/sitemap', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ sitemap_url: $('#sitemap-url').value }),
+        });
+        const d = await r.json();
+        if (!d.ok) throw new Error(d.error || 'Error');
+        urlsEl.value = d.urls.join('\n');
+        updateCount();
+        showResults({ sitemap: d.sitemap, count: d.count, message: 'URLs cargadas en el editor' });
+      } catch (e) {
+        alert(e.message);
+      } finally {
+        hideLoading();
+      }
+    };
+
+    $('#file-input').onchange = (ev) => {
+      const f = ev.target.files[0];
+      if (!f) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        urlsEl.value = reader.result;
+        updateCount();
+      };
+      reader.readAsText(f);
+      ev.target.value = '';
+    };
+
+    $('#btn-clear-results').onclick = () => resultsPanel.classList.add('hidden');
+
+    const panelSend = $('#panel-send');
+    const panelConfig = $('#panel-config');
+    const tabBtns = document.querySelectorAll('.tab-btn');
+    const configToast = $('#config-toast');
+    const configResult = $('#config-save-result');
+
+    function setTab(name) {
+      const isConfig = name === 'config';
+      panelSend.classList.toggle('hidden', isConfig);
+      panelConfig.classList.toggle('hidden', !isConfig);
+      tabBtns.forEach((btn) => {
+        const active = btn.dataset.tab === name;
+        btn.classList.toggle('bg-stone-900', active);
+        btn.classList.toggle('text-white', active);
+        btn.classList.toggle('text-stone-600', !active);
+        btn.classList.toggle('shadow-sm', active);
+      });
+      if (isConfig) {
+        loadConfigForm();
+        loadConfigSitemapField();
+      }
+    }
+
+    tabBtns.forEach((btn) => btn.addEventListener('click', () => setTab(btn.dataset.tab)));
+
+    function toggleGoogleMode() {
+      const mode = document.querySelector('input[name="google-mode"]:checked').value;
+      $('#cfg-google-oauth').classList.toggle('hidden', mode !== 'oauth');
+      $('#cfg-google-sa').classList.toggle('hidden', mode !== 'service_account');
+    }
+
+    document.querySelectorAll('input[name="google-mode"]').forEach((r) => {
+      r.addEventListener('change', toggleGoogleMode);
+    });
+
+    async function loadConfigForm() {
+      const r = await fetch('/api/config');
+      const d = await r.json();
+      $('#cfg-sitemap-url').value = d.sitemap_url || '';
+      $('#cfg-bing-host').value = d.bing.host || '';
+      $('#cfg-bing-key').value = d.bing.key || '';
+      $('#cfg-bing-key-location').value = d.bing.key_location || '';
+      const mode = d.google.mode || 'oauth';
+      const radio = document.querySelector('input[name="google-mode"][value="' + mode + '"]');
+      if (radio) radio.checked = true;
+      toggleGoogleMode();
+      $('#cfg-google-client').value = d.google.oauth_client || '';
+      $('#cfg-google-token').value = d.google.oauth_token || '';
+      $('#cfg-google-sa').value = d.google.service_account || '';
+    }
+
+    function showConfigToast(msg, ok) {
+      configToast.classList.remove('hidden');
+      configToast.className =
+        'mb-4 rounded-xl border px-4 py-3 text-sm ' +
+        (ok
+          ? 'border-emerald-200 bg-emerald-50 text-emerald-800'
+          : 'border-red-200 bg-red-50 text-red-800');
+      configToast.textContent = msg;
+    }
+
+    function showConfigResult(data) {
+      configResult.classList.remove('hidden');
+      configResult.textContent = JSON.stringify(data, null, 2);
+    }
+
+    $('#btn-save-sitemap').onclick = async () => {
+      const r = await fetch('/api/config/sitemap', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ sitemap_url: $('#cfg-sitemap-url').value }),
+      });
+      const d = await r.json();
+      if (!r.ok) {
+        showConfigToast(d.error || 'Error', false);
+        return;
+      }
+      showConfigToast('Sitemap guardado', true);
+      await loadConfigSitemapField();
+    };
+
+    $('#btn-save-bing').onclick = async () => {
+      const body = {
+        host: $('#cfg-bing-host').value,
+        key: $('#cfg-bing-key').value,
+        key_location: $('#cfg-bing-key-location').value,
+        json: $('#cfg-bing-json').value,
+      };
+      const r = await fetch('/api/config/bing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const d = await r.json();
+      if (!r.ok) {
+        showConfigToast(d.error || 'Error al guardar Bing', false);
+        return;
+      }
+      showConfigToast('Bing guardado correctamente', true);
+      showConfigResult(d);
+      loadStatus();
+      await loadConfigForm();
+    };
+
+    async function saveGooglePayload(extra) {
+      const mode = document.querySelector('input[name="google-mode"]:checked').value;
+      const body = {
+        mode,
+        oauth_client: $('#cfg-google-client').value,
+        oauth_token: $('#cfg-google-token').value,
+        service_account: $('#cfg-google-sa').value,
+        ...extra,
+      };
+      const r = await fetch('/api/config/google', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const d = await r.json();
+      if (!r.ok) {
+        showConfigToast(d.error || 'Error al guardar Google', false);
+        return false;
+      }
+      showConfigToast('Google guardado correctamente', true);
+      showConfigResult(d);
+      loadStatus();
+      await loadConfigForm();
+      return true;
+    }
+
+    $('#btn-save-google').onclick = () => saveGooglePayload({});
+    $('#btn-save-google-sa').onclick = () => saveGooglePayload({});
+
+    $('#btn-google-auth').addEventListener('click', async (e) => {
+      const client = $('#cfg-google-client').value.trim();
+      if (client) {
+        e.preventDefault();
+        const ok = await saveGooglePayload({});
+        if (ok) window.location.href = '/api/config/google/authorize';
+      }
+    });
+
+    const params = new URLSearchParams(location.search);
+    let startTab = params.get('tab') || document.body.dataset.initialTab || 'send';
+    const oauth = params.get('oauth');
+    if (oauth) startTab = 'config';
+    setTab(startTab);
+
+    if (oauth) {
+      if (oauth === 'ok') {
+        showConfigToast('Google autorizado. Token guardado; ya puedes enviar URLs.', true);
+        loadConfigForm();
+      } else {
+        showConfigToast('Error OAuth: ' + (params.get('msg') || 'desconocido'), false);
+      }
+      history.replaceState({}, '', '/?tab=config');
+    }
+
+    loadStatus();
+    resetSendSitemapField();
+    updateCount();
+  </script>
+</body>
+</html>
