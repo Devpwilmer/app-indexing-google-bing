@@ -122,19 +122,6 @@ app-indexing-google-bing/
 
 ---
 
-## Archivos que creas tú (no subas a GitHub)
-
-| Archivo | Contiene |
-|---------|----------|
-| `google_indexing/oauth_client.json` | Cliente OAuth de Google |
-| `google_indexing/oauth_token.json` | Token tras autorizar |
-| `bing_indexing/config.json` | Clave IndexNow y dominio |
-| `indexing_web/prefs.json` | Sitemap guardado (opcional) |
-
-El `.gitignore` evita subirlos por error. **Nunca** los compartas.
-
----
-
 ## Shopify (resumen)
 
 - El sitemap se actualiza al publicar productos, blogs o páginas.
